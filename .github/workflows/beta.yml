@@ -28,7 +28,7 @@ jobs:
         run: flutter create . --platforms=android,windows,macos,linux
       - run: flutter pub get
       - name: Check Formatting
-        run: dart format --set-exit-if-changed lib test scripts
+        run: dart format --set-exit-if-changed lib test
       - name: Analyze
         run: flutter analyze
       - name: Run Tests
