@@ -28,7 +28,6 @@ def ensure_gradle_properties(project_android: Path) -> None:
         lines = props.read_text(encoding='utf-8').splitlines()
     wanted = {
         'android.newDsl': 'false',
-        'android.defaults.buildfeatures.buildconfig': 'true',
     }
     existing = {line.split('=')[0].strip(): line for line in lines if '=' in line}
     for key, value in wanted.items():
