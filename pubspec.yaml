@@ -4,7 +4,7 @@ description: Cross-platform video and serial synchronized recorder built with Fl
 publish_to: none
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
 
 flutter:
   uses-material-design: true

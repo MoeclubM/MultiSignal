@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.35.6'
+  FLUTTER_VERSION: '3.44.2'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   KEY_ALIAS: multisignal
 
@@ -25,7 +25,9 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
       - name: Generate Flutter platform files
-        run: flutter create . --platforms=android,windows,macos,linux
+        run: |
+          flutter create . --platforms=android,windows,macos,linux
+          rm -f test/widget_test.dart
       - run: flutter pub get
       - name: Check Formatting
         run: dart format --set-exit-if-changed lib test
