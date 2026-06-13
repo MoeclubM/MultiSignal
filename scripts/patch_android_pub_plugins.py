@@ -8,7 +8,7 @@ def pub_cache_root() -> Path:
     return Path(os.environ.get('PUB_CACHE', Path.home() / '.pub-cache'))
 
 
-COMPILE_SDK_TARGET = '35'
+COMPILE_SDK_TARGET = '36'
 
 
 def bump_compile_sdk(text: str) -> str:

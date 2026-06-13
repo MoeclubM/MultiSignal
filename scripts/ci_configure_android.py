@@ -155,7 +155,7 @@ def configure_build_kts(path: Path) -> None:
     text = path.read_text(encoding='utf-8')
     text = text.replace(
         'compileSdk = flutter.compileSdkVersion',
-        'compileSdk = 35',
+        'compileSdk = 36',
     )
     text = text.replace(
         'targetSdk = flutter.targetSdkVersion',
