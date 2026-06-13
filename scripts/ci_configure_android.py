@@ -153,6 +153,14 @@ def configure_manifest() -> None:
 
 def configure_build_kts(path: Path) -> None:
     text = path.read_text(encoding='utf-8')
+    text = text.replace(
+        'compileSdk = flutter.compileSdkVersion',
+        'compileSdk = 36',
+    )
+    text = text.replace(
+        'targetSdk = flutter.targetSdkVersion',
+        'targetSdk = 35',
+    )
     if 'KEYSTORE_FILE' not in text:
         text = text.replace('android {\n', f'android {{{KTS_SIGNING_SNIPPET}', 1)
     if 'abiFilters' not in text:
