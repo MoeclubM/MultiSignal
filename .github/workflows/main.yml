@@ -68,6 +68,9 @@ jobs:
     strategy:
       matrix:
         include:
+          - arch: v7
+            target_platform: android-arm
+            abi_filter: armeabi-v7a
           - arch: arm64
             target_platform: android-arm64
             abi_filter: arm64-v8a
@@ -87,6 +90,7 @@ jobs:
       - run: flutter create . --platforms=android
       - run: python scripts/ci_configure_android.py
       - run: flutter pub get
+      - run: python scripts/patch_android_pub_plugins.py
       - name: Decode Keystore
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
@@ -225,6 +229,7 @@ jobs:
             echo "## 下载"
             echo ""
             echo "### Android"
+            echo "- [MultiSignal Android v7 (armeabi-v7a)](https://github.com/${{ github.repository }}/releases/download/v${TAG}/MultiSignal-Android-v7-${VERSION}-${RUN_ID}.apk)"
             echo "- [MultiSignal Android arm64](https://github.com/${{ github.repository }}/releases/download/v${TAG}/MultiSignal-Android-arm64-${VERSION}-${RUN_ID}.apk)"
             echo "- [MultiSignal Android x86_64](https://github.com/${{ github.repository }}/releases/download/v${TAG}/MultiSignal-Android-x86_64-${VERSION}-${RUN_ID}.apk)"
             echo ""

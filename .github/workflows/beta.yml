@@ -70,6 +70,9 @@ jobs:
     strategy:
       matrix:
         include:
+          - arch: v7
+            target_platform: android-arm
+            abi_filter: armeabi-v7a
           - arch: arm64
             target_platform: android-arm64
             abi_filter: arm64-v8a
@@ -91,6 +94,8 @@ jobs:
       - name: Configure Android signing and USB metadata
         run: python scripts/ci_configure_android.py
       - run: flutter pub get
+      - name: Patch Android plugin Gradle files
+        run: python scripts/patch_android_pub_plugins.py
       - name: Decode Keystore
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
