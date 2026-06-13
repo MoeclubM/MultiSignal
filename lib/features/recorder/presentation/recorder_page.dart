@@ -124,7 +124,7 @@ class _RecorderControls extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DropdownButtonFormField<String>(
-            value: state.selectedSerialDevice?.id,
+            initialValue: state.selectedSerialDevice?.id,
             decoration: const InputDecoration(labelText: '串口设备'),
             items: [
               for (final device in state.serialDevices)
@@ -141,7 +141,7 @@ class _RecorderControls extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
-            value: state.selectedVideoDevice?.id,
+            initialValue: state.selectedVideoDevice?.id,
             decoration: const InputDecoration(labelText: '摄像头'),
             items: [
               for (final device in state.videoDevices)

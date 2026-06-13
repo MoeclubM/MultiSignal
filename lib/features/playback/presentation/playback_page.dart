@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_player/video_player.dart';
@@ -7,19 +9,45 @@ import '../../../shared/widgets/section_card.dart';
 import '../../sessions/domain/serial_sample.dart';
 import '../application/playback_controller.dart';
 
-class PlaybackPage extends ConsumerWidget {
+class PlaybackPage extends ConsumerStatefulWidget {
   const PlaybackPage({required this.sessionId, super.key});
 
   final String sessionId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final playback = ref.watch(playbackControllerProvider(sessionId));
+  ConsumerState<PlaybackPage> createState() => _PlaybackPageState();
+}
+
+class _PlaybackPageState extends ConsumerState<PlaybackPage> {
+  Timer? _syncTimer;
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startSync(VideoPlayerController controller) {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 150), (_) {
+      if (!mounted) return;
+      syncPlaybackSamples(ref, widget.sessionId, controller.value.position);
+    });
+    syncPlaybackSamples(ref, widget.sessionId, controller.value.position);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final playback = ref.watch(playbackBundleProvider(widget.sessionId));
 
     return Scaffold(
       appBar: AppBar(title: const Text('同步回看')),
       body: playback.when(
-        data: (state) => _PlaybackBody(state: state, sessionId: sessionId),
+        data: (bundle) {
+          _startSync(bundle.videoController);
+          final samples = ref.watch(playbackSamplesProvider(widget.sessionId));
+          return _PlaybackBody(bundle: bundle, samples: samples);
+        },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => EmptyState(
           icon: Icons.error_outline,
@@ -31,16 +59,15 @@ class PlaybackPage extends ConsumerWidget {
   }
 }
 
-class _PlaybackBody extends ConsumerWidget {
-  const _PlaybackBody({required this.state, required this.sessionId});
+class _PlaybackBody extends StatelessWidget {
+  const _PlaybackBody({required this.bundle, required this.samples});
 
-  final PlaybackState state;
-  final String sessionId;
+  final PlaybackBundle bundle;
+  final List<SerialSample> samples;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.read(playbackControllerProvider(sessionId).notifier);
-    final video = state.videoController;
+  Widget build(BuildContext context) {
+    final video = bundle.videoController;
     final theme = Theme.of(context);
 
     return ListView(
@@ -51,7 +78,7 @@ class _PlaybackBody extends ConsumerWidget {
             final wide = constraints.maxWidth >= 980;
             final player = SectionCard(
               title: '视频',
-              subtitle: state.session.meta.video.deviceLabel,
+              subtitle: bundle.session.meta.video.deviceLabel,
               child: Column(
                 children: [
                   AspectRatio(
@@ -62,11 +89,11 @@ class _PlaybackBody extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _PlaybackControls(controller: controller, video: video),
+                  _PlaybackControls(video: video),
                 ],
               ),
             );
-            final serial = _SerialPanel(samples: state.currentSamples);
+            final serial = _SerialPanel(samples: samples);
             if (!wide) {
               return Column(children: [player, const SizedBox(height: 20), serial]);
             }
@@ -84,10 +111,10 @@ class _PlaybackBody extends ConsumerWidget {
         SectionCard(
           title: '会话信息',
           child: Text(
-            '平台：${state.session.meta.createdPlatform}\n'
-            '开始：${state.session.meta.startedAt.toLocal()}\n'
-            '串口：${state.session.meta.serial.portLabel ?? '未知'}\n'
-            '日志样本：${state.timelineIndex.samples.length}',
+            '平台：${bundle.session.meta.createdPlatform}\n'
+            '开始：${bundle.session.meta.startedAt.toLocal()}\n'
+            '串口：${bundle.session.meta.serial.portLabel ?? '未知'}\n'
+            '日志样本：${bundle.timelineIndex.samples.length}',
             style: theme.textTheme.bodyMedium,
           ),
         ),
@@ -97,37 +124,43 @@ class _PlaybackBody extends ConsumerWidget {
 }
 
 class _PlaybackControls extends StatelessWidget {
-  const _PlaybackControls({required this.controller, required this.video});
+  const _PlaybackControls({required this.video});
 
-  final PlaybackController controller;
   final VideoPlayerController video;
 
   @override
   Widget build(BuildContext context) {
-    final value = video.value;
-    final duration = value.duration;
-    final position = value.position > duration ? duration : value.position;
-
     return AnimatedBuilder(
       animation: video,
       builder: (context, _) {
         final current = video.value.position;
         final total = video.value.duration;
+        final safeMax = total.inMilliseconds == 0 ? 1.0 : total.inMilliseconds.toDouble();
+        final safeValue = total.inMilliseconds == 0
+            ? 0.0
+            : current.inMilliseconds.clamp(0, total.inMilliseconds).toDouble();
+
         return Column(
           children: [
             Slider(
-              value: total.inMilliseconds == 0 ? 0 : current.inMilliseconds.clamp(0, total.inMilliseconds).toDouble(),
-              max: total.inMilliseconds == 0 ? 1 : total.inMilliseconds.toDouble(),
-              onChanged: (value) => controller.seek(Duration(milliseconds: value.round())),
+              value: safeValue,
+              max: safeMax,
+              onChanged: (value) => video.seekTo(Duration(milliseconds: value.round())),
             ),
             Row(
               children: [
                 IconButton.filled(
-                  onPressed: controller.playPause,
+                  onPressed: () {
+                    if (video.value.isPlaying) {
+                      video.pause();
+                    } else {
+                      video.play();
+                    }
+                  },
                   icon: Icon(video.value.isPlaying ? Icons.pause : Icons.play_arrow),
                 ),
                 const SizedBox(width: 12),
-                Text('${_formatDuration(position)} / ${_formatDuration(duration)}'),
+                Text('${_formatDuration(current)} / ${_formatDuration(total)}'),
               ],
             ),
           ],
@@ -154,7 +187,9 @@ class _SerialPanel extends StatelessWidget {
             ? Center(
                 child: Text(
                   '当前位置没有串口数据',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               )
             : ListView.separated(
@@ -163,12 +198,10 @@ class _SerialPanel extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final sample = samples[index];
                   final seconds = sample.elapsedUs / 1000000;
+                  final title = sample.text.trim().isEmpty ? sample.rawHex : sample.text.trim();
                   return ListTile(
                     dense: true,
-                    title: Text(
-                      sample.text.toString().trim().isEmpty ? sample.rawHex.toString() : sample.text.toString().trim(),
-                      style: const TextStyle(fontFamily: 'monospace'),
-                    ),
+                    title: Text(title, style: const TextStyle(fontFamily: 'monospace')),
                     subtitle: Text('${seconds.toStringAsFixed(3)}s · ${sample.source}'),
                   );
                 },
