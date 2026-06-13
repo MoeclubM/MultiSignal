@@ -20,6 +20,8 @@ class PlaybackPage extends ConsumerStatefulWidget {
 
 class _PlaybackPageState extends ConsumerState<PlaybackPage> {
   Timer? _syncTimer;
+  PlaybackBundle? _bundle;
+  List<SerialSample> _samples = const [];
 
   @override
   void dispose() {
@@ -27,13 +29,18 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     super.dispose();
   }
 
-  void _startSync(VideoPlayerController controller) {
+  void _startSync(PlaybackBundle bundle) {
     _syncTimer?.cancel();
-    _syncTimer = Timer.periodic(const Duration(milliseconds: 150), (_) {
-      if (!mounted) return;
-      syncPlaybackSamples(ref, widget.sessionId, controller.value.position);
-    });
-    syncPlaybackSamples(ref, widget.sessionId, controller.value.position);
+    _bundle = bundle;
+    void tick() {
+      if (!mounted || _bundle == null) return;
+      setState(() {
+        _samples = _bundle!.samplesAt(bundle.videoController.value.position);
+      });
+    }
+
+    tick();
+    _syncTimer = Timer.periodic(const Duration(milliseconds: 150), (_) => tick());
   }
 
   @override
@@ -44,9 +51,8 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
       appBar: AppBar(title: const Text('同步回看')),
       body: playback.when(
         data: (bundle) {
-          _startSync(bundle.videoController);
-          final samples = ref.watch(playbackSamplesProvider(widget.sessionId));
-          return _PlaybackBody(bundle: bundle, samples: samples);
+          WidgetsBinding.instance.addPostFrameCallback((_) => _startSync(bundle));
+          return _PlaybackBody(bundle: bundle, samples: _samples);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => EmptyState(

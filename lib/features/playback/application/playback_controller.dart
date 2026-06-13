@@ -17,6 +17,10 @@ class PlaybackBundle {
   final RecordingSession session;
   final VideoPlayerController videoController;
   final SerialTimelineIndex timelineIndex;
+
+  List<SerialSample> samplesAt(Duration position) {
+    return timelineIndex.window(position: position);
+  }
 }
 
 final playbackBundleProvider = FutureProvider.autoDispose.family<PlaybackBundle, String>(
@@ -42,14 +46,3 @@ final playbackBundleProvider = FutureProvider.autoDispose.family<PlaybackBundle,
     );
   },
 );
-
-final playbackSamplesProvider = StateProvider.autoDispose.family<List<SerialSample>, String>(
-  (ref, sessionId) => const [],
-);
-
-void syncPlaybackSamples(WidgetRef ref, String sessionId, Duration position) {
-  final bundle = ref.read(playbackBundleProvider(sessionId)).valueOrNull;
-  if (bundle == null) return;
-  ref.read(playbackSamplesProvider(sessionId).notifier).state =
-      bundle.timelineIndex.window(position: position);
-}
