@@ -45,12 +45,29 @@ class AndroidUsbSerialAdapter implements SerialPortAdapter {
     await port.setRTS(true);
     await port.setPortParameters(
       config.baudRate,
-      config.dataBits,
-      config.stopBits,
+      _androidDataBits(config.dataBits),
+      _androidStopBits(config.stopBits),
       _androidParity(config.parity),
     );
 
     return AndroidUsbSerialConnection(port);
+  }
+
+  int _androidDataBits(int dataBits) {
+    return switch (dataBits) {
+      5 => usb.UsbPort.DATABITS_5,
+      6 => usb.UsbPort.DATABITS_6,
+      7 => usb.UsbPort.DATABITS_7,
+      _ => usb.UsbPort.DATABITS_8,
+    };
+  }
+
+  int _androidStopBits(int stopBits) {
+    return switch (stopBits) {
+      2 => usb.UsbPort.STOPBITS_2,
+      15 => usb.UsbPort.STOPBITS_1_5,
+      _ => usb.UsbPort.STOPBITS_1,
+    };
   }
 
   int _androidParity(String parity) {

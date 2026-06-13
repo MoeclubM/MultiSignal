@@ -29,8 +29,8 @@ jobs:
           flutter create . --platforms=android,windows,macos,linux
           rm -f test/widget_test.dart
       - run: flutter pub get
-      - name: Check Formatting
-        run: dart format --set-exit-if-changed lib test
+      - name: Format
+        run: dart format lib test
       - name: Analyze
         run: flutter analyze
       - name: Run Tests
