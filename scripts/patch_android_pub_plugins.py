@@ -8,17 +8,32 @@ def pub_cache_root() -> Path:
     return Path(os.environ.get('PUB_CACHE', Path.home() / '.pub-cache'))
 
 
+COMPILE_SDK_TARGET = '35'
+
+
+def bump_compile_sdk(text: str) -> str:
+    """Raise plugin compileSdk so AAR metadata checks pass on CI runners."""
+    updated = text
+    for old in ('28', '29', '30', '31', '32', '33', '34'):
+        updated = updated.replace(f'compileSdkVersion {old}', f'compileSdkVersion {COMPILE_SDK_TARGET}')
+        updated = updated.replace(f'compileSdk {old}', f'compileSdk {COMPILE_SDK_TARGET}')
+    updated = updated.replace(
+        'compileSdk = flutter.compileSdkVersion',
+        f'compileSdk = {COMPILE_SDK_TARGET}',
+    )
+    updated = updated.replace(
+        'compileSdk flutter.compileSdkVersion',
+        f'compileSdk {COMPILE_SDK_TARGET}',
+    )
+    return updated
+
+
 def patch_file(path: Path) -> bool:
     if not path.is_file():
         return False
     text = path.read_text(encoding='utf-8')
     updated = text.replace('jcenter()', 'mavenCentral()')
-    if 'compileSdkVersion' in updated and 'compileSdkVersion 36' not in updated:
-        updated = updated.replace('compileSdkVersion 28', 'compileSdkVersion 34')
-        updated = updated.replace('compileSdkVersion 29', 'compileSdkVersion 34')
-        updated = updated.replace('compileSdkVersion 30', 'compileSdkVersion 34')
-        updated = updated.replace('compileSdkVersion 31', 'compileSdkVersion 34')
-        updated = updated.replace('compileSdkVersion 33', 'compileSdkVersion 34')
+    updated = bump_compile_sdk(updated)
     if updated == text:
         return False
     path.write_text(updated, encoding='utf-8')
@@ -33,7 +48,7 @@ def ensure_gradle_properties(project_android: Path) -> None:
         lines = props.read_text(encoding='utf-8').splitlines()
     wanted = {
         'android.newDsl': 'false',
-        'android.suppressUnsupportedCompileSdk': '36',
+        'android.suppressUnsupportedCompileSdk': COMPILE_SDK_TARGET,
     }
     existing = {line.split('=')[0].strip(): line for line in lines if '=' in line}
     for key, value in wanted.items():
@@ -80,13 +95,10 @@ subprojects { project ->
 def main() -> None:
     hosted = pub_cache_root() / 'hosted' / 'pub.dev'
     if hosted.is_dir():
-        for pattern in (
-            'flutter_libserialport-*/android/build.gradle',
-            'usb_serial-*/android/build.gradle',
-            'file_picker-*/android/build.gradle',
-        ):
-            for build_gradle in hosted.glob(pattern):
-                patch_file(build_gradle)
+        for build_gradle in hosted.glob('*/android/build.gradle'):
+            patch_file(build_gradle)
+        for build_gradle in hosted.glob('*/android/build.gradle.kts'):
+            patch_file(build_gradle)
 
     ensure_gradle_properties(Path('android'))
     patch_root_build_gradle()

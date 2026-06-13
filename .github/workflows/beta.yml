@@ -94,10 +94,6 @@ jobs:
       - run: flutter pub get
       - name: Patch Android plugin Gradle files
         run: python scripts/patch_android_pub_plugins.py
-      - name: Install Android SDK 36
-        run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-36" "build-tools;35.0.0"
       - name: Decode Keystore
         run: |
           if [ -n "$KEYSTORE_BASE64" ]; then
