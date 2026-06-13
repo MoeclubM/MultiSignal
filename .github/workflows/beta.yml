@@ -1,0 +1,200 @@
+name: Beta Build
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: beta-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.35.6'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  KEY_ALIAS: multisignal
+
+jobs:
+  check:
+    name: Format · Analyze · Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Generate Flutter platform files
+        run: flutter create . --platforms=android,windows,macos,linux
+      - run: flutter pub get
+      - name: Check Formatting
+        run: dart format --set-exit-if-changed lib test scripts
+      - name: Analyze
+        run: flutter analyze
+      - name: Run Tests
+        run: flutter test
+
+  get-version:
+    name: Compute Beta Version
+    runs-on: ubuntu-latest
+    needs: check
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+      build_number: ${{ steps.compute.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Compute Beta Version
+        id: compute
+        run: |
+          LATEST_TAG_REF=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -n "$LATEST_TAG_REF" ]; then
+            COMMITS_SINCE=$(git rev-list --count ${LATEST_TAG_REF}..HEAD)
+          else
+            COMMITS_SINCE=$(git rev-list --count HEAD)
+          fi
+          SHORT_HASH=$(git rev-parse --short=7 HEAD)
+          BASE_VERSION=$(grep 'version:' pubspec.yaml | head -1 | sed 's/.*version: *//' | sed 's/+.*//')
+          BUILD_NUMBER=$(grep 'version:' pubspec.yaml | head -1 | sed 's/.*+//')
+          BETA_VERSION="${BASE_VERSION}-beta.${COMMITS_SINCE}.${SHORT_HASH}"
+          echo "version=${BETA_VERSION}" >> $GITHUB_OUTPUT
+          echo "build_number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+
+  android:
+    name: Build Android (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    needs: get-version
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            target_platform: android-arm64
+            abi_filter: arm64-v8a
+          - arch: x86_64
+            target_platform: android-x64
+            abi_filter: x86_64
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - name: Generate Flutter platform files
+        run: flutter create . --platforms=android
+      - name: Configure Android signing and USB metadata
+        run: python scripts/ci_configure_android.py
+      - run: flutter pub get
+      - name: Decode Keystore
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-key.jks
+            echo "KEYSTORE_FILE=release-key.jks" >> $GITHUB_ENV
+          fi
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --target-platform ${{ matrix.target_platform }} \
+            --build-name "${{ needs.get-version.outputs.version }}" \
+            --build-number "${{ needs.get-version.outputs.build_number }}"
+        env:
+          ABI_FILTER: ${{ matrix.abi_filter }}
+          KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ env.KEY_ALIAS }}
+      - name: Cleanup Keystore
+        if: always()
+        run: rm -f android/app/release-key.jks
+      - name: Prepare APK Artifact
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "dist/MultiSignal-Beta-Android-${{ matrix.arch }}-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: multisignal-beta-android-${{ matrix.arch }}-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-Beta-Android-${{ matrix.arch }}-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.apk
+          if-no-files-found: error
+
+  linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter create . --platforms=linux
+      - run: flutter pub get
+      - run: flutter config --enable-linux-desktop
+      - run: flutter build linux --release --build-name "${{ needs.get-version.outputs.version }}" --build-number "${{ needs.get-version.outputs.build_number }}"
+      - run: |
+          mkdir -p dist
+          tar -czf "dist/MultiSignal-Beta-Linux-x86_64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.tar.gz" -C build/linux/x64/release/bundle .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: multisignal-beta-linux-x86_64-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-Beta-Linux-x86_64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.tar.gz
+          if-no-files-found: error
+
+  windows:
+    name: Build Windows
+    runs-on: windows-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter create . --platforms=windows
+      - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
+      - run: flutter build windows --release --build-name "${{ needs.get-version.outputs.version }}" --build-number "${{ needs.get-version.outputs.build_number }}"
+      - run: |
+          New-Item -ItemType Directory -Force dist
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\MultiSignal-Beta-Windows-x64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip"
+        shell: pwsh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: multisignal-beta-windows-x64-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-Beta-Windows-x64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip
+          if-no-files-found: error
+
+  macos:
+    name: Build macOS
+    runs-on: macos-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter create . --platforms=macos
+      - run: flutter pub get
+      - run: flutter config --enable-macos-desktop
+      - run: flutter build macos --release --build-name "${{ needs.get-version.outputs.version }}" --build-number "${{ needs.get-version.outputs.build_number }}"
+      - run: |
+          mkdir -p dist
+          cd build/macos/Build/Products/Release
+          APP_BUNDLE=$(find . -maxdepth 1 -name "*.app" -type d | head -n 1)
+          zip -r "$GITHUB_WORKSPACE/dist/MultiSignal-Beta-macOS-universal-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip" "$APP_BUNDLE"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: multisignal-beta-macos-universal-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-Beta-macOS-universal-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip
+          if-no-files-found: error

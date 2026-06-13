@@ -1,0 +1,236 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.35.6'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  KEY_ALIAS: multisignal
+
+jobs:
+  get-version:
+    name: Extract Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      build_number: ${{ steps.get-version.outputs.build_number }}
+      tag: ${{ steps.get-version.outputs.tag }}
+      changelog: ${{ steps.get-changelog.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Extract Version from Tag
+        id: get-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION=$(grep 'version:' pubspec.yaml | head -1 | sed 's/.*version: *//' | sed 's/+.*//')
+          else
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          fi
+          if [[ "$VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            PATCH="${BASH_REMATCH[3]}"
+            BUILD_NUMBER=$((MAJOR * 10000 + MINOR * 100 + PATCH))
+          else
+            BUILD_NUMBER=$(grep 'version:' pubspec.yaml | head -1 | sed 's/.*+//')
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "build_number=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+      - name: Generate Changelog
+        id: get-changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            echo "## Changes since $PREV_TAG" > changelog.md
+            git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD >> changelog.md
+          else
+            echo "## Changes" > changelog.md
+            git log --pretty=format:"- %s (%h)" -20 >> changelog.md
+          fi
+          {
+            echo "changelog<<EOF"
+            cat changelog.md
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+  build-android:
+    name: Build Android (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    needs: get-version
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            target_platform: android-arm64
+            abi_filter: arm64-v8a
+          - arch: x86_64
+            target_platform: android-x64
+            abi_filter: x86_64
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter create . --platforms=android
+      - run: python scripts/ci_configure_android.py
+      - run: flutter pub get
+      - name: Decode Keystore
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-key.jks
+            echo "KEYSTORE_FILE=release-key.jks" >> $GITHUB_ENV
+          fi
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Build APK
+        run: |
+          flutter build apk --release \
+            --target-platform ${{ matrix.target_platform }} \
+            --build-name ${{ needs.get-version.outputs.version }} \
+            --build-number ${{ needs.get-version.outputs.build_number }}
+        env:
+          ABI_FILTER: ${{ matrix.abi_filter }}
+          KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ env.KEY_ALIAS }}
+      - name: Cleanup Keystore
+        if: always()
+        run: rm -f android/app/release-key.jks
+      - name: Prepare APK Artifact
+        run: |
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk \
+            "dist/MultiSignal-Android-${{ matrix.arch }}-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.apk"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: MultiSignal-Android-${{ matrix.arch }}-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-Android-${{ matrix.arch }}-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.apk
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter create . --platforms=linux
+      - run: flutter pub get
+      - run: flutter config --enable-linux-desktop
+      - run: flutter build linux --release --build-name ${{ needs.get-version.outputs.version }} --build-number ${{ needs.get-version.outputs.build_number }}
+      - run: |
+          mkdir -p dist
+          tar -czf "dist/MultiSignal-Linux-x86_64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.tar.gz" -C build/linux/x64/release/bundle .
+      - uses: actions/upload-artifact@v7
+        with:
+          name: MultiSignal-Linux-x86_64-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-Linux-x86_64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.tar.gz
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter create . --platforms=windows
+      - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
+      - run: flutter build windows --release --build-name ${{ needs.get-version.outputs.version }} --build-number ${{ needs.get-version.outputs.build_number }}
+      - run: |
+          New-Item -ItemType Directory -Force dist
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "dist\MultiSignal-Windows-x64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip"
+        shell: pwsh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: MultiSignal-Windows-x64-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-Windows-x64-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    needs: get-version
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+      - run: flutter create . --platforms=macos
+      - run: flutter pub get
+      - run: flutter config --enable-macos-desktop
+      - run: flutter build macos --release --build-name ${{ needs.get-version.outputs.version }} --build-number ${{ needs.get-version.outputs.build_number }}
+      - run: |
+          mkdir -p dist
+          cd build/macos/Build/Products/Release
+          APP_BUNDLE=$(find . -maxdepth 1 -name "*.app" -type d | head -n 1)
+          zip -r "$GITHUB_WORKSPACE/dist/MultiSignal-macOS-universal-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip" "$APP_BUNDLE"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: MultiSignal-macOS-universal-${{ github.run_id }}
+          archive: false
+          path: dist/MultiSignal-macOS-universal-${{ needs.get-version.outputs.version }}-${{ github.run_id }}.zip
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    needs: [get-version, build-android, build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+      - name: Prepare & Upload to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.get-version.outputs.tag }}
+          VERSION: ${{ needs.get-version.outputs.version }}
+          RUN_ID: ${{ github.run_id }}
+          CHANGELOG: ${{ needs.get-version.outputs.changelog }}
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.apk" -o -name "*.tar.gz" -o -name "*.zip" \) -exec cp {} release/ \;
+          printf '%s\n\n' "$CHANGELOG" > release-body.md
+          {
+            echo "## 下载"
+            echo ""
+            echo "### Android"
+            echo "- [MultiSignal Android arm64](https://github.com/${{ github.repository }}/releases/download/v${TAG}/MultiSignal-Android-arm64-${VERSION}-${RUN_ID}.apk)"
+            echo "- [MultiSignal Android x86_64](https://github.com/${{ github.repository }}/releases/download/v${TAG}/MultiSignal-Android-x86_64-${VERSION}-${RUN_ID}.apk)"
+            echo ""
+            echo "### Linux / Windows / macOS"
+            echo "- 见 Release 附件"
+          } >> release-body.md
+          if gh release view "v$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            gh release edit "v$TAG" --repo "${{ github.repository }}" --title "Release v$TAG" --notes-file release-body.md
+            gh release upload "v$TAG" release/* --repo "${{ github.repository }}" --clobber
+          else
+            gh release create "v$TAG" release/* --repo "${{ github.repository }}" --title "Release v$TAG" --notes-file release-body.md
+          fi

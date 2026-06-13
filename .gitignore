@@ -1,0 +1,32 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+coverage/
+
+# Generated platform artifacts
+android/.gradle/
+android/local.properties
+android/app/build/
+windows/flutter/ephemeral/
+macos/Flutter/ephemeral/
+linux/flutter/ephemeral/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# App data / recordings
+recordings/
+*.log
+
+# Android signing (local only; CI uses GitHub Secrets)
+android/app/release-key.jks
+*.jks
+
+# OS
+.DS_Store
+Thumbs.db
