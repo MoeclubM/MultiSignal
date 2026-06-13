@@ -58,38 +58,18 @@ def ensure_gradle_properties(project_android: Path) -> None:
     print(f'Updated {props}')
 
 
-def patch_root_build_gradle() -> None:
-    """Skip desktop-only serialport plugin tasks on Android CI builds."""
+def strip_libserialport_skip_from_root_gradle() -> None:
+    """Remove legacy CI hack that disabled plugin tasks (breaks checkReleaseAarMetadata)."""
+    marker = 'multisignal_skip_libserialport_android'
     for name in ('build.gradle.kts', 'build.gradle'):
         root = Path('android') / name
         if not root.exists():
             continue
         text = root.read_text(encoding='utf-8')
-        marker = 'multisignal_skip_libserialport_android'
-        if marker in text:
-            return
-        if name.endswith('.kts'):
-            injection = '''
-
-// multisignal_skip_libserialport_android
-subprojects {
-    if (name == "flutter_libserialport") {
-        tasks.configureEach { enabled = false }
-    }
-}
-'''
-        else:
-            injection = '''
-
-// multisignal_skip_libserialport_android
-subprojects { project ->
-    if (project.name == "flutter_libserialport") {
-        project.tasks.configureEach { task -> task.enabled = false }
-    }
-}
-'''
-        root.write_text(text + injection, encoding='utf-8')
-        print(f'Updated {root}')
+        if marker not in text:
+            continue
+        root.write_text(text.split(marker, 1)[0].rstrip() + '\n', encoding='utf-8')
+        print(f'Removed libserialport skip block from {root}')
 
 
 def main() -> None:
@@ -101,7 +81,7 @@ def main() -> None:
             patch_file(build_gradle)
 
     ensure_gradle_properties(Path('android'))
-    patch_root_build_gradle()
+    strip_libserialport_skip_from_root_gradle()
 
 
 if __name__ == '__main__':
