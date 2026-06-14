@@ -51,7 +51,12 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
       appBar: AppBar(title: const Text('同步回看')),
       body: playback.when(
         data: (bundle) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _startSync(bundle));
+          // Start the sync timer exactly once per bundle. Using a post-frame
+          // callback inside build() would re-run it on every rebuild (each tick
+          // triggers setState), churning timers at frame rate.
+          if (!identical(_bundle, bundle)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) => _startSync(bundle));
+          }
           return _PlaybackBody(bundle: bundle, samples: _samples);
         },
         loading: () => const Center(child: CircularProgressIndicator()),
