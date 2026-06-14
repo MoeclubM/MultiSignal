@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/clock/clock_service.dart';
 import '../../serial/application/serial_adapter_provider.dart';
 import '../../serial/domain/serial_connection.dart';
+import '../../serial/domain/serial_device.dart';
 import '../../serial/domain/serial_port_adapter.dart';
 import '../../sessions/data/serial_log_writer.dart';
 import '../../sessions/data/session_repository.dart';
 import '../../sessions/domain/serial_sample.dart';
 import '../../sessions/domain/session_status.dart';
 import '../../video/application/video_recorder_provider.dart';
+import '../../video/domain/video_device.dart';
 import '../../video/domain/video_recorder.dart';
 import '../domain/recording_state.dart';
 
