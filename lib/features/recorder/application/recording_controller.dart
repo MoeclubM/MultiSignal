@@ -45,11 +45,26 @@ class RecordingController extends Notifier<RecordingState> {
     try {
       final serialDevices = await _serialAdapter.listDevices();
       final videoDevices = await _videoRecorder.listDevices();
+      // Re-validate the previously selected devices: a device that disappeared
+      // (USB unplugged, camera in use) must not stay selected, otherwise the
+      // dropdown in the UI ends up pointing at a non-existent item.
+      final currentSerial = state.selectedSerialDevice;
+      final currentVideo = state.selectedVideoDevice;
+      final resolvedSerial = currentSerial == null
+          ? (serialDevices.isNotEmpty ? serialDevices.first : null)
+          : serialDevices
+              .cast<SerialDevice?>()
+              .firstWhere((d) => d?.id == currentSerial.id, orElse: () => null);
+      final resolvedVideo = currentVideo == null
+          ? (videoDevices.isNotEmpty ? videoDevices.first : null)
+          : videoDevices
+              .cast<VideoDevice?>()
+              .firstWhere((d) => d?.id == currentVideo.id, orElse: () => null);
       state = state.copyWith(
         serialDevices: serialDevices,
         videoDevices: videoDevices,
-        selectedSerialDevice: state.selectedSerialDevice ?? (serialDevices.isNotEmpty ? serialDevices.first : null),
-        selectedVideoDevice: state.selectedVideoDevice ?? (videoDevices.isNotEmpty ? videoDevices.first : null),
+        selectedSerialDevice: resolvedSerial,
+        selectedVideoDevice: resolvedVideo,
         errorMessage: null,
       );
     } catch (error) {

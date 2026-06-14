@@ -43,6 +43,9 @@ class RecordingState {
 
   bool get isRecording => phase == RecordingPhase.recording;
 
+  /// [selectedSerialDevice], [selectedVideoDevice] and [errorMessage] are
+  /// nullable and therefore use the [RecordingState._sentinel] sentinel so they
+  /// can be explicitly cleared by passing `null`.
   RecordingState copyWith({
     RecordingPhase? phase,
     List<SerialDevice>? serialDevices,
@@ -53,9 +56,9 @@ class RecordingState {
     int? receivedChunks,
     String? recentText,
     RecordingSession? session,
-    SerialDevice? selectedSerialDevice,
-    VideoDevice? selectedVideoDevice,
-    String? errorMessage,
+    Object? selectedSerialDevice = _sentinel,
+    Object? selectedVideoDevice = _sentinel,
+    Object? errorMessage = _sentinel,
   }) {
     return RecordingState(
       phase: phase ?? this.phase,
@@ -67,9 +70,17 @@ class RecordingState {
       receivedChunks: receivedChunks ?? this.receivedChunks,
       recentText: recentText ?? this.recentText,
       session: session ?? this.session,
-      selectedSerialDevice: selectedSerialDevice ?? this.selectedSerialDevice,
-      selectedVideoDevice: selectedVideoDevice ?? this.selectedVideoDevice,
-      errorMessage: errorMessage,
+      selectedSerialDevice: identical(selectedSerialDevice, _sentinel)
+          ? this.selectedSerialDevice
+          : selectedSerialDevice as SerialDevice?,
+      selectedVideoDevice: identical(selectedVideoDevice, _sentinel)
+          ? this.selectedVideoDevice
+          : selectedVideoDevice as VideoDevice?,
+      errorMessage: identical(errorMessage, _sentinel)
+          ? this.errorMessage
+          : errorMessage as String?,
     );
   }
+
+  static const _sentinel = Object();
 }

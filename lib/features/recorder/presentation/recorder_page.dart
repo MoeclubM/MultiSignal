@@ -124,7 +124,13 @@ class _RecorderControls extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DropdownButtonFormField<String>(
-            initialValue: state.selectedSerialDevice?.id,
+            // Use `value` (controlled) instead of `initialValue` so the dropdown
+            // tracks the selected device as it changes on rescan. Guard against
+            // a value not present in [items] to avoid an assertion failure.
+            value: _selectableValue(
+              state.selectedSerialDevice?.id,
+              state.serialDevices.map((device) => device.id),
+            ),
             decoration: const InputDecoration(labelText: '串口设备'),
             items: [
               for (final device in state.serialDevices)
@@ -141,7 +147,10 @@ class _RecorderControls extends ConsumerWidget {
           ),
           const SizedBox(height: 14),
           DropdownButtonFormField<String>(
-            initialValue: state.selectedVideoDevice?.id,
+            value: _selectableValue(
+              state.selectedVideoDevice?.id,
+              state.videoDevices.map((device) => device.id),
+            ),
             decoration: const InputDecoration(labelText: '摄像头'),
             items: [
               for (final device in state.videoDevices)
@@ -206,6 +215,14 @@ String _phaseLabel(RecordingPhase phase) {
     RecordingPhase.completed => '已完成',
     RecordingPhase.error => '异常',
   };
+}
+
+/// Returns [id] only if it exists among the [availableIds]; otherwise `null`.
+/// Prevents `DropdownButtonFormField` from asserting that its value is present
+/// in the items list after a rescan removes the selected device.
+String? _selectableValue(String? id, Iterable<String> availableIds) {
+  if (id == null) return null;
+  return availableIds.contains(id) ? id : null;
 }
 
 String _formatDuration(Duration duration) {

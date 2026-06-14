@@ -45,6 +45,7 @@ class MockSerialConnection implements SerialConnection {
   final SerialConfig config;
   final _controller = StreamController<Uint8List>.broadcast();
   Timer? _timer;
+  bool _closed = false;
 
   @override
   Stream<Uint8List> get input => _controller.stream;
@@ -54,7 +55,13 @@ class MockSerialConnection implements SerialConnection {
 
   @override
   Future<void> close() async {
+    // Idempotent: `_stopInternals`/`_cleanup` in the recording controller may
+    // be invoked more than once (dispose path). Closing an already-closed
+    // StreamController throws, so guard it.
+    if (_closed) return;
+    _closed = true;
     _timer?.cancel();
+    _timer = null;
     await _controller.close();
   }
 }
