@@ -56,19 +56,19 @@ class SessionMeta {
   }
 
   Map<String, Object?> toJson() => {
-        'schemaVersion': schemaVersion,
-        'sessionId': sessionId,
-        'createdPlatform': createdPlatform,
-        'startedAt': startedAt.toUtc().toIso8601String(),
-        'endedAt': endedAt?.toUtc().toIso8601String(),
-        'monotonicStartUs': monotonicStartUs,
-        'videoStartOffsetUs': videoStartOffsetUs,
-        'video': video.toJson(),
-        'serial': serial.toJson(),
-        'files': files.toJson(),
-        'status': status.name,
-        'errorMessage': errorMessage,
-      };
+    'schemaVersion': schemaVersion,
+    'sessionId': sessionId,
+    'createdPlatform': createdPlatform,
+    'startedAt': startedAt.toUtc().toIso8601String(),
+    'endedAt': endedAt?.toUtc().toIso8601String(),
+    'monotonicStartUs': monotonicStartUs,
+    'videoStartOffsetUs': videoStartOffsetUs,
+    'video': video.toJson(),
+    'serial': serial.toJson(),
+    'files': files.toJson(),
+    'status': status.name,
+    'errorMessage': errorMessage,
+  };
 
   factory SessionMeta.fromJson(Map<String, Object?> json) {
     return SessionMeta(
@@ -76,12 +76,18 @@ class SessionMeta {
       sessionId: json['sessionId'] as String,
       createdPlatform: json['createdPlatform'] as String? ?? 'unknown',
       startedAt: DateTime.parse(json['startedAt'] as String).toUtc(),
-      endedAt: json['endedAt'] == null ? null : DateTime.parse(json['endedAt'] as String).toUtc(),
+      endedAt: json['endedAt'] == null
+          ? null
+          : DateTime.parse(json['endedAt'] as String).toUtc(),
       monotonicStartUs: json['monotonicStartUs'] as int? ?? 0,
       videoStartOffsetUs: json['videoStartOffsetUs'] as int? ?? 0,
       video: VideoMeta.fromJson((json['video'] as Map).cast<String, Object?>()),
-      serial: SerialConfig.fromJson((json['serial'] as Map).cast<String, Object?>()),
-      files: SessionFiles.fromJson((json['files'] as Map).cast<String, Object?>()),
+      serial: SerialConfig.fromJson(
+        (json['serial'] as Map).cast<String, Object?>(),
+      ),
+      files: SessionFiles.fromJson(
+        (json['files'] as Map).cast<String, Object?>(),
+      ),
       status: SessionStatus.fromJson(json['status'] as String? ?? 'error'),
       errorMessage: json['errorMessage'] as String?,
     );
@@ -89,21 +95,17 @@ class SessionMeta {
 }
 
 class VideoMeta {
-  const VideoMeta({
-    required this.fileName,
-    this.deviceLabel,
-    this.resolution,
-  });
+  const VideoMeta({required this.fileName, this.deviceLabel, this.resolution});
 
   final String fileName;
   final String? deviceLabel;
   final String? resolution;
 
   Map<String, Object?> toJson() => {
-        'fileName': fileName,
-        'deviceLabel': deviceLabel,
-        'resolution': resolution,
-      };
+    'fileName': fileName,
+    'deviceLabel': deviceLabel,
+    'resolution': resolution,
+  };
 
   factory VideoMeta.fromJson(Map<String, Object?> json) {
     return VideoMeta(
@@ -126,10 +128,10 @@ class SessionFiles {
   final String meta;
 
   Map<String, Object?> toJson() => {
-        'video': video,
-        'serialLog': serialLog,
-        'meta': meta,
-      };
+    'video': video,
+    'serialLog': serialLog,
+    'meta': meta,
+  };
 
   factory SessionFiles.fromJson(Map<String, Object?> json) {
     return SessionFiles(

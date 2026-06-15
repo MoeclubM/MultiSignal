@@ -30,7 +30,9 @@ class _ImportSessionPageState extends ConsumerState<ImportSessionPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('可将 Android 手机录制的整个会话目录通过 USB 数据线、文件管理器或云盘复制到电脑，然后在这里导入。'),
+                const Text(
+                  '可将 Android 手机录制的整个会话目录通过 USB 数据线、文件管理器或云盘复制到电脑，然后在这里导入。',
+                ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
                   onPressed: _isImporting ? null : _import,
@@ -60,7 +62,9 @@ class _ImportSessionPageState extends ConsumerState<ImportSessionPage> {
       _message = null;
     });
     try {
-      final session = await ref.read(sessionTransferServiceProvider).importSession();
+      final session = await ref
+          .read(sessionTransferServiceProvider)
+          .importSession();
       ref.invalidate(sessionsProvider);
       if (!mounted) return;
       context.go('/sessions/${session.meta.sessionId}');

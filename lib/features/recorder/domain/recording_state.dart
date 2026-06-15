@@ -3,14 +3,7 @@ import '../../sessions/domain/recording_session.dart';
 import '../../sessions/domain/serial_config.dart';
 import '../../video/domain/video_device.dart';
 
-enum RecordingPhase {
-  idle,
-  preparing,
-  recording,
-  stopping,
-  completed,
-  error;
-}
+enum RecordingPhase { idle, preparing, recording, stopping, completed, error }
 
 class RecordingState {
   const RecordingState({

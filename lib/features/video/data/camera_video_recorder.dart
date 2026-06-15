@@ -15,10 +15,7 @@ class CameraVideoRecorder implements VideoRecorder {
     _cameras = await availableCameras();
     return [
       for (var i = 0; i < _cameras.length; i++)
-        VideoDevice(
-          id: i.toString(),
-          label: _cameraLabel(_cameras[i], i),
-        ),
+        VideoDevice(id: i.toString(), label: _cameraLabel(_cameras[i], i)),
     ];
   }
 
@@ -110,7 +107,11 @@ class _VideoPlaceholder extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.videocam_off_outlined, size: 56, color: theme.colorScheme.onSurfaceVariant),
+          Icon(
+            Icons.videocam_off_outlined,
+            size: 56,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(height: 12),
           Text(message, style: theme.textTheme.titleMedium),
         ],

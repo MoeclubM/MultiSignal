@@ -8,7 +8,7 @@ import '../domain/serial_sample.dart';
 
 class SerialLogWriter {
   SerialLogWriter(this.file, {Duration? flushInterval})
-      : _flushInterval = flushInterval ?? const Duration(seconds: 2);
+    : _flushInterval = flushInterval ?? const Duration(seconds: 2);
 
   final File file;
   final Duration _flushInterval;
@@ -20,7 +20,7 @@ class SerialLogWriter {
   Future<void> open() async {
     await file.parent.create(recursive: true);
     _sink = file.openWrite();
-    _sink!.writeln(const ListToCsvConverter().convert([header]));
+    _sink!.writeln(csv.encode([header]));
     // Flush periodically so a crash or OS kill does not lose the entire
     // recording: the OS file buffer can otherwise retain megabytes of samples
     // that never reach disk.
@@ -32,7 +32,7 @@ class SerialLogWriter {
     if (sink == null) {
       throw StateError('SerialLogWriter is not open.');
     }
-    sink.writeln(const ListToCsvConverter().convert([sample.toCsvRow()]));
+    sink.writeln(csv.encode([sample.toCsvRow()]));
   }
 
   /// Writes any buffered samples to disk without closing the file.
@@ -73,7 +73,11 @@ class SerialLogReader {
     if (!await file.exists()) return const [];
     final content = await file.readAsString(encoding: utf8);
     if (content.trim().isEmpty) return const [];
-    final rows = const CsvToListConverter(eol: '\n').convert(content);
-    return rows.skip(1).where((row) => row.length >= 4).map(SerialSample.fromCsvRow).toList();
+    final rows = csv.decode(content);
+    return rows
+        .skip(1)
+        .where((row) => row.length >= 4)
+        .map(SerialSample.fromCsvRow)
+        .toList();
   }
 }

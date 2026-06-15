@@ -40,11 +40,7 @@ class RecorderPage extends ConsumerWidget {
               final controls = _RecorderControls(state: state);
               if (!wide) {
                 return Column(
-                  children: [
-                    preview,
-                    const SizedBox(height: 16),
-                    controls,
-                  ],
+                  children: [preview, const SizedBox(height: 16), controls],
                 );
               }
               return Row(
@@ -77,7 +73,9 @@ class RecorderPage extends ConsumerWidget {
             title: '最近串口数据',
             child: SelectableText(
               state.recentText.isEmpty ? '尚未接收数据' : state.recentText,
-              style: theme.textTheme.bodyLarge?.copyWith(fontFamily: 'monospace'),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontFamily: 'monospace',
+              ),
             ),
           ),
           if (state.errorMessage != null) ...[
@@ -96,11 +94,13 @@ class RecorderPage extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: state.phase == RecordingPhase.preparing || state.phase == RecordingPhase.stopping
+        onPressed:
+            state.phase == RecordingPhase.preparing ||
+                state.phase == RecordingPhase.stopping
             ? null
             : state.isRecording
-                ? controller.stop
-                : controller.start,
+            ? controller.stop
+            : controller.start,
         icon: Icon(state.isRecording ? Icons.stop : Icons.fiber_manual_record),
         label: Text(state.isRecording ? '停止录制' : '开始录制'),
       ),
@@ -134,10 +134,7 @@ class _RecorderControls extends ConsumerWidget {
             decoration: const InputDecoration(labelText: '串口设备'),
             items: [
               for (final device in state.serialDevices)
-                DropdownMenuItem(
-                  value: device.id,
-                  child: Text(device.label),
-                ),
+                DropdownMenuItem(value: device.id, child: Text(device.label)),
             ],
             onChanged: state.isRecording || state.serialDevices.isEmpty
                 ? null
@@ -154,10 +151,7 @@ class _RecorderControls extends ConsumerWidget {
             decoration: const InputDecoration(labelText: '摄像头'),
             items: [
               for (final device in state.videoDevices)
-                DropdownMenuItem(
-                  value: device.id,
-                  child: Text(device.label),
-                ),
+                DropdownMenuItem(value: device.id, child: Text(device.label)),
             ],
             onChanged: state.isRecording || state.videoDevices.isEmpty
                 ? null

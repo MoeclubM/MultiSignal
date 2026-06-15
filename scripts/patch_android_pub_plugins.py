@@ -14,7 +14,7 @@ COMPILE_SDK_TARGET = '36'
 def bump_compile_sdk(text: str) -> str:
     """Raise plugin compileSdk so AAR metadata checks pass on CI runners."""
     updated = text
-    for old in ('28', '29', '30', '31', '32', '33', '34'):
+    for old in ('28', '29', '30', '31', '32', '33', '34', '35'):
         updated = updated.replace(f'compileSdkVersion {old}', f'compileSdkVersion {COMPILE_SDK_TARGET}')
         updated = updated.replace(f'compileSdk {old}', f'compileSdk {COMPILE_SDK_TARGET}')
     updated = updated.replace(

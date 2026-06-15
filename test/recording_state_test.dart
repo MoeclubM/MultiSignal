@@ -35,10 +35,7 @@ void main() {
       );
 
       // Other fields change, but the omitted nullable ones are preserved.
-      final updated = initial.copyWith(
-        receivedBytes: 123,
-        recentText: 'hello',
-      );
+      final updated = initial.copyWith(receivedBytes: 123, recentText: 'hello');
 
       expect(updated.selectedSerialDevice?.id, 'serial-1');
       expect(updated.errorMessage, 'boom');

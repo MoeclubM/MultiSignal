@@ -23,26 +23,27 @@ class PlaybackBundle {
   }
 }
 
-final playbackBundleProvider = FutureProvider.autoDispose.family<PlaybackBundle, String>(
-  (ref, sessionId) async {
-    final session = await ref.watch(sessionRepositoryProvider).findById(sessionId);
-    if (session == null) {
-      throw StateError('找不到会话：$sessionId');
-    }
-    if (!await session.videoFile.exists()) {
-      throw StateError('视频文件不存在：${session.videoFile.path}');
-    }
+final playbackBundleProvider = FutureProvider.autoDispose
+    .family<PlaybackBundle, String>((ref, sessionId) async {
+      final session = await ref
+          .watch(sessionRepositoryProvider)
+          .findById(sessionId);
+      if (session == null) {
+        throw StateError('找不到会话：$sessionId');
+      }
+      if (!await session.videoFile.exists()) {
+        throw StateError('视频文件不存在：${session.videoFile.path}');
+      }
 
-    final samples = await const SerialLogReader().read(session.serialLogFile);
-    final timeline = SerialTimelineIndex(samples);
-    final videoController = VideoPlayerController.file(session.videoFile);
-    ref.onDispose(videoController.dispose);
-    await videoController.initialize();
+      final samples = await const SerialLogReader().read(session.serialLogFile);
+      final timeline = SerialTimelineIndex(samples);
+      final videoController = VideoPlayerController.file(session.videoFile);
+      ref.onDispose(videoController.dispose);
+      await videoController.initialize();
 
-    return PlaybackBundle(
-      session: session,
-      videoController: videoController,
-      timelineIndex: timeline,
-    );
-  },
-);
+      return PlaybackBundle(
+        session: session,
+        videoController: videoController,
+        timelineIndex: timeline,
+      );
+    });

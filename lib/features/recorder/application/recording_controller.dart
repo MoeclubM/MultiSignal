@@ -16,9 +16,10 @@ import '../../video/domain/video_device.dart';
 import '../../video/domain/video_recorder.dart';
 import '../domain/recording_state.dart';
 
-final recordingControllerProvider = NotifierProvider<RecordingController, RecordingState>(
-  RecordingController.new,
-);
+final recordingControllerProvider =
+    NotifierProvider<RecordingController, RecordingState>(
+      RecordingController.new,
+    );
 
 class RecordingController extends Notifier<RecordingState> {
   late final SerialPortAdapter _serialAdapter;
@@ -54,14 +55,16 @@ class RecordingController extends Notifier<RecordingState> {
       final currentVideo = state.selectedVideoDevice;
       final resolvedSerial = currentSerial == null
           ? (serialDevices.isNotEmpty ? serialDevices.first : null)
-          : serialDevices
-              .cast<SerialDevice?>()
-              .firstWhere((d) => d?.id == currentSerial.id, orElse: () => null);
+          : serialDevices.cast<SerialDevice?>().firstWhere(
+              (d) => d?.id == currentSerial.id,
+              orElse: () => null,
+            );
       final resolvedVideo = currentVideo == null
           ? (videoDevices.isNotEmpty ? videoDevices.first : null)
-          : videoDevices
-              .cast<VideoDevice?>()
-              .firstWhere((d) => d?.id == currentVideo.id, orElse: () => null);
+          : videoDevices.cast<VideoDevice?>().firstWhere(
+              (d) => d?.id == currentVideo.id,
+              orElse: () => null,
+            );
       state = state.copyWith(
         serialDevices: serialDevices,
         videoDevices: videoDevices,
@@ -79,7 +82,9 @@ class RecordingController extends Notifier<RecordingState> {
 
   Future<void> selectSerialDevice(String id) async {
     final matches = state.serialDevices.where((device) => device.id == id);
-    state = state.copyWith(selectedSerialDevice: matches.isEmpty ? null : matches.first);
+    state = state.copyWith(
+      selectedSerialDevice: matches.isEmpty ? null : matches.first,
+    );
   }
 
   Future<void> selectVideoDevice(String id) async {
@@ -103,11 +108,17 @@ class RecordingController extends Notifier<RecordingState> {
     final serialDevice = state.selectedSerialDevice;
     final videoDevice = state.selectedVideoDevice;
     if (serialDevice == null) {
-      state = state.copyWith(phase: RecordingPhase.error, errorMessage: '请先选择串口设备');
+      state = state.copyWith(
+        phase: RecordingPhase.error,
+        errorMessage: '请先选择串口设备',
+      );
       return;
     }
     if (videoDevice == null) {
-      state = state.copyWith(phase: RecordingPhase.error, errorMessage: '请先选择摄像头');
+      state = state.copyWith(
+        phase: RecordingPhase.error,
+        errorMessage: '请先选择摄像头',
+      );
       return;
     }
 
@@ -123,7 +134,9 @@ class RecordingController extends Notifier<RecordingState> {
     try {
       await _videoRecorder.initialize(videoDevice);
       final session = await _sessionRepository.createSession(
-        serialConfig: state.serialConfig.copyWith(portLabel: serialDevice.label),
+        serialConfig: state.serialConfig.copyWith(
+          portLabel: serialDevice.label,
+        ),
         videoDeviceLabel: videoDevice.label,
         resolution: 'high',
       );
@@ -151,7 +164,9 @@ class RecordingController extends Notifier<RecordingState> {
           state = state.copyWith(
             receivedBytes: state.receivedBytes + bytes.length,
             receivedChunks: state.receivedChunks + 1,
-            recentText: sample.text.trim().isEmpty ? sample.rawHex : sample.text.trim(),
+            recentText: sample.text.trim().isEmpty
+                ? sample.rawHex
+                : sample.text.trim(),
           );
         },
         onError: (Object error, StackTrace stackTrace) {
@@ -165,7 +180,9 @@ class RecordingController extends Notifier<RecordingState> {
       _elapsedTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
         final startUs = _recordingStartUs;
         if (startUs == null) return;
-        state = state.copyWith(elapsed: Duration(microseconds: _clock.elapsedSinceUs(startUs)));
+        state = state.copyWith(
+          elapsed: Duration(microseconds: _clock.elapsedSinceUs(startUs)),
+        );
       });
 
       state = state.copyWith(phase: RecordingPhase.recording, session: session);
@@ -192,14 +209,20 @@ class RecordingController extends Notifier<RecordingState> {
           endedAt: _clock.wallNow(),
           status: SessionStatus.completed,
         );
-        final updatedSession = await _sessionRepository.updateSessionMeta(session, updatedMeta);
+        final updatedSession = await _sessionRepository.updateSessionMeta(
+          session,
+          updatedMeta,
+        );
         state = state.copyWith(
           phase: RecordingPhase.completed,
           session: updatedSession,
           errorMessage: null,
         );
       } else {
-        state = state.copyWith(phase: RecordingPhase.completed, errorMessage: null);
+        state = state.copyWith(
+          phase: RecordingPhase.completed,
+          errorMessage: null,
+        );
       }
     } catch (error) {
       if (session != null) {

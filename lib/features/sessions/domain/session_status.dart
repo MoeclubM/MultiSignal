@@ -3,7 +3,8 @@ enum SessionStatus {
   interrupted,
   error;
 
-  static SessionStatus fromJson(String value) => SessionStatus.values.firstWhere(
+  static SessionStatus fromJson(String value) =>
+      SessionStatus.values.firstWhere(
         (status) => status.name == value,
         orElse: () => SessionStatus.error,
       );

@@ -8,31 +8,38 @@ import 'session_repository.dart';
 import '../domain/recording_session.dart';
 
 final sessionTransferServiceProvider = Provider<SessionTransferService>((ref) {
-  return SessionTransferService(repository: ref.watch(sessionRepositoryProvider));
+  return SessionTransferService(
+    repository: ref.watch(sessionRepositoryProvider),
+  );
 });
 
 class SessionTransferService {
-  const SessionTransferService({required SessionRepository repository}) : _repository = repository;
+  const SessionTransferService({required SessionRepository repository})
+    : _repository = repository;
 
   final SessionRepository _repository;
 
   Future<String?> exportSession(RecordingSession session) async {
-    final targetRoot = await FilePicker.platform.getDirectoryPath(dialogTitle: '选择导出目录');
+    final targetRoot = await FilePicker.getDirectoryPath(dialogTitle: '选择导出目录');
     if (targetRoot == null) return null;
-    final target = Directory(p.join(targetRoot, p.basename(session.directory.path)));
+    final target = Directory(
+      p.join(targetRoot, p.basename(session.directory.path)),
+    );
     await _copyDirectory(session.directory, target);
     return target.path;
   }
 
   Future<RecordingSession> importSession() async {
-    final sourcePath = await FilePicker.platform.getDirectoryPath(dialogTitle: '选择会话目录');
+    final sourcePath = await FilePicker.getDirectoryPath(dialogTitle: '选择会话目录');
     if (sourcePath == null) throw StateError('已取消导入');
     final source = Directory(sourcePath);
     final validation = await _repository.validateSessionDirectory(source);
     if (!validation.isValid) throw StateError(validation.message);
 
     final root = await _repository.recordingsRoot();
-    final target = await _uniqueDirectory(Directory(p.join(root.path, p.basename(source.path))));
+    final target = await _uniqueDirectory(
+      Directory(p.join(root.path, p.basename(source.path))),
+    );
     await _copyDirectory(source, target);
     final imported = await _repository.tryLoadSession(target);
     if (imported == null) throw StateError('导入后无法读取会话元数据');

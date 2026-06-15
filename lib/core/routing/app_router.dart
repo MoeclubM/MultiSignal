@@ -33,9 +33,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':sessionId',
                 name: 'playback',
-                builder: (context, state) => PlaybackPage(
-                  sessionId: state.pathParameters['sessionId']!,
-                ),
+                builder: (context, state) =>
+                    PlaybackPage(sessionId: state.pathParameters['sessionId']!),
               ),
             ],
           ),

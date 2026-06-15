@@ -81,7 +81,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
           packages: platforms;android-36 build-tools;35.0.0
       - uses: subosito/flutter-action@v2
@@ -182,6 +182,8 @@ jobs:
     name: Build macOS
     runs-on: macos-latest
     needs: get-version
+    env:
+      HOMEBREW_NO_REQUIRE_TAP_TRUST: '1'
     steps:
       - uses: actions/checkout@v6
       - run: brew install automake libtool

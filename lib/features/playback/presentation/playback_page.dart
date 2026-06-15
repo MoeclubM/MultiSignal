@@ -40,7 +40,10 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
     }
 
     tick();
-    _syncTimer = Timer.periodic(const Duration(milliseconds: 150), (_) => tick());
+    _syncTimer = Timer.periodic(
+      const Duration(milliseconds: 150),
+      (_) => tick(),
+    );
   }
 
   @override
@@ -55,7 +58,9 @@ class _PlaybackPageState extends ConsumerState<PlaybackPage> {
           // callback inside build() would re-run it on every rebuild (each tick
           // triggers setState), churning timers at frame rate.
           if (!identical(_bundle, bundle)) {
-            WidgetsBinding.instance.addPostFrameCallback((_) => _startSync(bundle));
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _startSync(bundle),
+            );
           }
           return _PlaybackBody(bundle: bundle, samples: _samples);
         },
@@ -93,7 +98,9 @@ class _PlaybackBody extends StatelessWidget {
               child: Column(
                 children: [
                   AspectRatio(
-                    aspectRatio: video.value.aspectRatio == 0 ? 16 / 9 : video.value.aspectRatio,
+                    aspectRatio: video.value.aspectRatio == 0
+                        ? 16 / 9
+                        : video.value.aspectRatio,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: VideoPlayer(video),
@@ -106,7 +113,9 @@ class _PlaybackBody extends StatelessWidget {
             );
             final serial = _SerialPanel(samples: samples);
             if (!wide) {
-              return Column(children: [player, const SizedBox(height: 20), serial]);
+              return Column(
+                children: [player, const SizedBox(height: 20), serial],
+              );
             }
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +155,9 @@ class _PlaybackControls extends StatelessWidget {
       builder: (context, _) {
         final current = video.value.position;
         final total = video.value.duration;
-        final safeMax = total.inMilliseconds == 0 ? 1.0 : total.inMilliseconds.toDouble();
+        final safeMax = total.inMilliseconds == 0
+            ? 1.0
+            : total.inMilliseconds.toDouble();
         final safeValue = total.inMilliseconds == 0
             ? 0.0
             : current.inMilliseconds.clamp(0, total.inMilliseconds).toDouble();
@@ -156,7 +167,8 @@ class _PlaybackControls extends StatelessWidget {
             Slider(
               value: safeValue,
               max: safeMax,
-              onChanged: (value) => video.seekTo(Duration(milliseconds: value.round())),
+              onChanged: (value) =>
+                  video.seekTo(Duration(milliseconds: value.round())),
             ),
             Row(
               children: [
@@ -168,7 +180,9 @@ class _PlaybackControls extends StatelessWidget {
                       video.play();
                     }
                   },
-                  icon: Icon(video.value.isPlaying ? Icons.pause : Icons.play_arrow),
+                  icon: Icon(
+                    video.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text('${_formatDuration(current)} / ${_formatDuration(total)}'),
@@ -209,11 +223,18 @@ class _SerialPanel extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final sample = samples[index];
                   final seconds = sample.elapsedUs / 1000000;
-                  final title = sample.text.trim().isEmpty ? sample.rawHex : sample.text.trim();
+                  final title = sample.text.trim().isEmpty
+                      ? sample.rawHex
+                      : sample.text.trim();
                   return ListTile(
                     dense: true,
-                    title: Text(title, style: const TextStyle(fontFamily: 'monospace')),
-                    subtitle: Text('${seconds.toStringAsFixed(3)}s · ${sample.source}'),
+                    title: Text(
+                      title,
+                      style: const TextStyle(fontFamily: 'monospace'),
+                    ),
+                    subtitle: Text(
+                      '${seconds.toStringAsFixed(3)}s · ${sample.source}',
+                    ),
                   );
                 },
               ),

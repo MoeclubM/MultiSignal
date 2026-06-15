@@ -8,11 +8,11 @@ class SerialConfig {
   });
 
   const SerialConfig.defaults()
-      : baudRate = 115200,
-        dataBits = 8,
-        stopBits = 1,
-        parity = 'none',
-        portLabel = null;
+    : baudRate = 115200,
+      dataBits = 8,
+      stopBits = 1,
+      parity = 'none',
+      portLabel = null;
 
   final int baudRate;
   final int dataBits;
@@ -37,12 +37,12 @@ class SerialConfig {
   }
 
   Map<String, Object?> toJson() => {
-        'baudRate': baudRate,
-        'dataBits': dataBits,
-        'stopBits': stopBits,
-        'parity': parity,
-        'portLabel': portLabel,
-      };
+    'baudRate': baudRate,
+    'dataBits': dataBits,
+    'stopBits': stopBits,
+    'parity': parity,
+    'portLabel': portLabel,
+  };
 
   factory SerialConfig.fromJson(Map<String, Object?> json) {
     return SerialConfig(

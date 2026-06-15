@@ -11,10 +11,16 @@ final sessionsProvider = FutureProvider<List<RecordingSession>>((ref) async {
   return ref.watch(sessionRepositoryProvider).listSessions();
 });
 
-final sessionByIdProvider = FutureProvider.family<RecordingSession?, String>((ref, sessionId) async {
+final sessionByIdProvider = FutureProvider.family<RecordingSession?, String>((
+  ref,
+  sessionId,
+) async {
   return ref.watch(sessionRepositoryProvider).findById(sessionId);
 });
 
-final serialSamplesProvider = FutureProvider.family<List<SerialSample>, File>((ref, file) async {
+final serialSamplesProvider = FutureProvider.family<List<SerialSample>, File>((
+  ref,
+  file,
+) async {
   return const SerialLogReader().read(file);
 });

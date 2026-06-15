@@ -13,9 +13,17 @@ void main() {
       endedAt: DateTime.utc(2026, 6, 13, 10),
       monotonicStartUs: 100,
       videoStartOffsetUs: 12,
-      video: const VideoMeta(fileName: 'video.mp4', deviceLabel: 'Camera', resolution: 'high'),
+      video: const VideoMeta(
+        fileName: 'video.mp4',
+        deviceLabel: 'Camera',
+        resolution: 'high',
+      ),
       serial: const SerialConfig.defaults().copyWith(portLabel: 'COM3'),
-      files: const SessionFiles(video: 'video.mp4', serialLog: 'serial_log.csv', meta: 'session_meta.json'),
+      files: const SessionFiles(
+        video: 'video.mp4',
+        serialLog: 'serial_log.csv',
+        meta: 'session_meta.json',
+      ),
       status: SessionStatus.completed,
     );
 

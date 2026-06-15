@@ -12,9 +12,9 @@ class ClockService {
   int monotonicNowUs() => _elapsedToUs(_stopwatch.elapsed);
 
   RecordingClockSnapshot snapshot() => RecordingClockSnapshot(
-        wallTime: wallNow(),
-        monotonicUs: monotonicNowUs(),
-      );
+    wallTime: wallNow(),
+    monotonicUs: monotonicNowUs(),
+  );
 
   int elapsedSinceUs(int monotonicStartUs) {
     return max(0, monotonicNowUs() - monotonicStartUs);

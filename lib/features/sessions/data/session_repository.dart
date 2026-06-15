@@ -38,9 +38,13 @@ class SessionRepository {
   }) async {
     final snapshot = _clock.snapshot();
     final id = _uuid.v4();
-    final nameTime = DateFormat('yyyyMMdd_HHmmss').format(snapshot.wallTime.toLocal());
+    final nameTime = DateFormat(
+      'yyyyMMdd_HHmmss',
+    ).format(snapshot.wallTime.toLocal());
     final shortId = id.substring(0, 8);
-    final directory = Directory(p.join((await recordingsRoot()).path, 'session_${nameTime}_$shortId'));
+    final directory = Directory(
+      p.join((await recordingsRoot()).path, 'session_${nameTime}_$shortId'),
+    );
     await directory.create(recursive: true);
 
     final meta = SessionMeta(
@@ -71,7 +75,9 @@ class SessionRepository {
   Future<void> saveMeta(RecordingSession session, {SessionMeta? meta}) async {
     final effectiveMeta = meta ?? session.meta;
     const encoder = JsonEncoder.withIndent('  ');
-    await session.metaFile.writeAsString(encoder.convert(effectiveMeta.toJson()));
+    await session.metaFile.writeAsString(
+      encoder.convert(effectiveMeta.toJson()),
+    );
   }
 
   Future<RecordingSession> updateSessionMeta(
@@ -113,7 +119,8 @@ class SessionRepository {
     final metaFile = File(p.join(directory.path, 'session_meta.json'));
     if (!await metaFile.exists()) return null;
     try {
-      final json = jsonDecode(await metaFile.readAsString()) as Map<String, Object?>;
+      final json =
+          jsonDecode(await metaFile.readAsString()) as Map<String, Object?>;
       final meta = SessionMeta.fromJson(json);
       return RecordingSession(directory: directory, meta: meta);
     } catch (_) {
@@ -121,7 +128,9 @@ class SessionRepository {
     }
   }
 
-  Future<SessionValidationResult> validateSessionDirectory(Directory directory) async {
+  Future<SessionValidationResult> validateSessionDirectory(
+    Directory directory,
+  ) async {
     final session = await tryLoadSession(directory);
     if (session == null) {
       return const SessionValidationResult(false, '缺少或无法解析 session_meta.json');

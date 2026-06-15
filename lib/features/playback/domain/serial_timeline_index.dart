@@ -6,7 +6,8 @@ class SerialTimelineIndex {
   final List<SerialSample> samples;
 
   static List<SerialSample> _sorted(List<SerialSample> samples) {
-    final sorted = [...samples]..sort((a, b) => a.elapsedUs.compareTo(b.elapsedUs));
+    final sorted = [...samples]
+      ..sort((a, b) => a.elapsedUs.compareTo(b.elapsedUs));
     return List.unmodifiable(sorted);
   }
 
@@ -40,7 +41,10 @@ class SerialTimelineIndex {
     if (index >= samples.length) return samples.last;
     final previous = samples[index - 1];
     final next = samples[index];
-    return (targetUs - previous.elapsedUs).abs() <= (next.elapsedUs - targetUs).abs() ? previous : next;
+    return (targetUs - previous.elapsedUs).abs() <=
+            (next.elapsedUs - targetUs).abs()
+        ? previous
+        : next;
   }
 
   int _lowerBound(int elapsedUs) {

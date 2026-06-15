@@ -14,12 +14,7 @@ class DesktopSerialAdapter implements SerialPortAdapter {
   @override
   Future<List<SerialDevice>> listDevices() async {
     return SerialPort.availablePorts
-        .map(
-          (name) => SerialDevice(
-            id: name,
-            label: name,
-          ),
-        )
+        .map((name) => SerialDevice(id: name, label: name))
         .toList();
   }
 

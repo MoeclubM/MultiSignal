@@ -48,7 +48,8 @@ class SessionsPage extends ConsumerWidget {
           }
           return ListView.separated(
             padding: const EdgeInsets.all(20),
-            itemBuilder: (context, index) => _SessionTile(session: items[index]),
+            itemBuilder: (context, index) =>
+                _SessionTile(session: items[index]),
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemCount: items.length,
           );
@@ -73,22 +74,31 @@ class _SessionTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final meta = session.meta;
     final theme = Theme.of(context);
-    final duration = meta.endedAt == null ? null : meta.endedAt!.difference(meta.startedAt);
+    final duration = meta.endedAt == null
+        ? null
+        : meta.endedAt!.difference(meta.startedAt);
 
     return SectionCard(
       title: meta.startedAt.toLocal().toString().split('.').first,
-      subtitle: '${meta.createdPlatform} · ${_statusLabel(meta.status)} · ${duration == null ? '未知时长' : _formatDuration(duration)}',
+      subtitle:
+          '${meta.createdPlatform} · ${_statusLabel(meta.status)} · ${duration == null ? '未知时长' : _formatDuration(duration)}',
       trailing: PopupMenuButton<String>(
         onSelected: (value) async {
           if (value == 'export') {
             try {
-              final path = await ref.read(sessionTransferServiceProvider).exportSession(session);
+              final path = await ref
+                  .read(sessionTransferServiceProvider)
+                  .exportSession(session);
               if (path != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('已导出到 $path')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('已导出到 $path')));
               }
             } catch (error) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('导出失败：$error')));
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('导出失败：$error')));
               }
             }
           }
@@ -118,7 +128,9 @@ class _SessionTile extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       meta.serial.portLabel ?? '未知串口',
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
