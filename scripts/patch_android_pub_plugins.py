@@ -9,23 +9,57 @@ def pub_cache_root() -> Path:
 
 
 COMPILE_SDK_TARGET = '36'
+MARKER_FORCE_KOTLIN = 'multisignal_force_kotlin'
 
 
-def bump_compile_sdk(text: str) -> str:
+def bump_compile_sdk(text: str, *, kts: bool) -> str:
     """Raise plugin compileSdk so AAR metadata checks pass on CI runners."""
+    compile_sdk = f'compileSdk = {COMPILE_SDK_TARGET}' if kts else f'compileSdk {COMPILE_SDK_TARGET}'
     updated = text
     for old in ('28', '29', '30', '31', '32', '33', '34', '35'):
         updated = updated.replace(f'compileSdkVersion {old}', f'compileSdkVersion {COMPILE_SDK_TARGET}')
-        updated = updated.replace(f'compileSdk {old}', f'compileSdk {COMPILE_SDK_TARGET}')
-    updated = updated.replace(
-        'compileSdk = flutter.compileSdkVersion',
-        f'compileSdk = {COMPILE_SDK_TARGET}',
-    )
-    updated = updated.replace(
-        'compileSdk flutter.compileSdkVersion',
-        f'compileSdk {COMPILE_SDK_TARGET}',
-    )
+        if kts:
+            updated = updated.replace(f'compileSdk = {old}', f'compileSdk = {COMPILE_SDK_TARGET}')
+            updated = updated.replace(f'compileSdk {old}', f'compileSdk = {COMPILE_SDK_TARGET}')
+        else:
+            updated = updated.replace(f'compileSdk {old}', f'compileSdk {COMPILE_SDK_TARGET}')
+    updated = updated.replace('compileSdk = flutter.compileSdkVersion', compile_sdk)
+    updated = updated.replace('compileSdk flutter.compileSdkVersion', compile_sdk)
     return updated
+
+
+def patch_agp9_kotlin_groovy(path: Path) -> bool:
+    """Force Kotlin plugin on AGP 9 for plugins that skip it but still ship Kotlin sources."""
+    if path.name != 'build.gradle' or 'file_picker' not in str(path):
+        return False
+    text = path.read_text(encoding='utf-8')
+    if MARKER_FORCE_KOTLIN in text or 'isAgp9OrAbove' not in text:
+        return False
+    updated = text.replace(
+        """apply plugin: 'com.android.library'
+if (!isAgp9OrAbove) {
+    apply plugin: 'org.jetbrains.kotlin.android'
+}""",
+        f"""apply plugin: 'com.android.library'
+// {MARKER_FORCE_KOTLIN}: Flutter 3.44 (AGP 9) still needs explicit Kotlin plugin here
+apply plugin: 'org.jetbrains.kotlin.android'""",
+    )
+    updated = updated.replace(
+        """    if (!isAgp9OrAbove) {
+        kotlinOptions {
+            jvmTarget = JavaVersion.VERSION_17.toString()
+        }
+    }""",
+        f"""    // {MARKER_FORCE_KOTLIN}
+    kotlinOptions {{
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }}""",
+    )
+    if updated == text:
+        return False
+    path.write_text(updated, encoding='utf-8')
+    print(f'Patched AGP9 Kotlin in {path}')
+    return True
 
 
 def patch_file(path: Path) -> bool:
@@ -33,12 +67,13 @@ def patch_file(path: Path) -> bool:
         return False
     text = path.read_text(encoding='utf-8')
     updated = text.replace('jcenter()', 'mavenCentral()')
-    updated = bump_compile_sdk(updated)
-    if updated == text:
-        return False
-    path.write_text(updated, encoding='utf-8')
-    print(f'Patched {path}')
-    return True
+    updated = bump_compile_sdk(updated, kts=path.name.endswith('.kts'))
+    changed = updated != text
+    if changed:
+        path.write_text(updated, encoding='utf-8')
+        print(f'Patched {path}')
+    patch_agp9_kotlin_groovy(path)
+    return changed
 
 
 def ensure_gradle_properties(project_android: Path) -> None:
